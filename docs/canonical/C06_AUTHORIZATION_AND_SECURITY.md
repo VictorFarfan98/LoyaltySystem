@@ -25,6 +25,8 @@ Null branch assignment has role-specific meaning. It is not a blanket permission
 
 ## Authorization invariants
 
+For loyalty data, the frontend uses the application HTTP API. Route handlers delegate through controllers and feature services to repositories, which call Supabase RPCs with the verified caller’s JWT. Each RPC enforces its own authorization. Add an application endpoint when a workflow needs it (DEC-023).
+
 - Resolve business from authenticated membership and request context; never trust tenant/branch identifiers alone.
 - Verify active membership and role on every protected operation.
 - Verify branch belongs to the business and is active. Branch staff must be assigned to the branch used for an event.

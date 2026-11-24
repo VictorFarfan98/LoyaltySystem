@@ -1,11 +1,11 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(43);
+select plan(44);
 
 insert into loyalty.businesses (id, name) values (1, 'Fixture A'), (2, 'Fixture B');
--- Reuse branch 11 in both tenants to exercise the composite policy key.
-insert into public.branches (business_id, id, name, active) values
+-- Reuse branch 11 in both tenants to exercise the tenant boundary.
+insert into loyalty.branches (business_id, id, name, active) values
   (1, 11, 'A North', true), (1, 12, 'A East', true), (1, 13, 'A West', true),
   (1, 14, 'A Closed', false), (2, 11, 'B Central', true);
 insert into auth.users (id)
@@ -86,36 +86,39 @@ select is((select count(*) from loyalty.pass_credentials p join loyalty.customer
   1::bigint, 'Customer deactivation preserves the pass reference');
 
 select ok(not exists (select from pg_class c join pg_namespace n on n.oid = c.relnamespace
-  where (n.nspname = 'loyalty' or c.oid = 'public.branches'::regclass)
+  where n.nspname = 'loyalty'
     and c.relkind = 'r' and not c.relrowsecurity), 'Every foundation table enables RLS');
 select ok((select prosecdef and pg_get_userbyid(proowner) = 'postgres'
     and proconfig = array['search_path=""']
-  from pg_proc where oid = 'loyalty.visible_branches()'::regprocedure)
-  and not has_function_privilege('anon', 'loyalty.visible_branches()', 'EXECUTE')
-  and has_function_privilege('authenticated', 'loyalty.visible_branches()', 'EXECUTE')
+  from pg_proc where oid = 'public.list_my_branches()'::regprocedure)
+  and not has_function_privilege('anon', 'public.list_my_branches()', 'EXECUTE')
+  and has_function_privilege('authenticated', 'public.list_my_branches()', 'EXECUTE')
   and not has_schema_privilege('authenticated', 'loyalty', 'USAGE'),
-  'The branch helper has a trusted owner, empty search path and policy-only caller access');
+  'Branch RPC uses a trusted owner and empty search path, with private tables and authenticated execution');
 
 -- The SQL roles and JWT subject here are the context the API sets after verification.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000001"}';
-select is(array(select name from public.branches order by id), array['A North','A East','A West'],
-  'Owner sees all active branches of their business only');
+select results_eq('select business_id, id, name from public.list_my_branches() order by id',
+  $$values (1::bigint, 11::bigint, 'A North'::text), (1, 12, 'A East'), (1, 13, 'A West')$$,
+  'Owner receives branch identifiers and names only in the active tenant and branch scope');
+select throws_ok('select name from loyalty.branches', '42501', null,
+  'Even an owner cannot read the branch table directly');
 select throws_ok('select token_hash from loyalty.pass_credentials', '42501', null,
   'Even an owner cannot read credential hashes directly');
-select throws_ok('update public.branches set business_id = 2 where id = 11', '42501', null,
+select throws_ok('update loyalty.branches set business_id = 2 where id = 11', '42501', null,
   'Direct tenant reassignment is forbidden');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000002"}';
-select is(array(select name from public.branches), array['A East'], 'Scoped manager sees only the assigned branch');
+select is(array(select name from public.list_my_branches()), array['A East'], 'Scoped manager sees only the assigned branch');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000003"}';
-select is(array(select name from public.branches order by id), array['A North','A West'],
+select is(array(select name from public.list_my_branches() order by id), array['A North','A West'],
   'Staff see all and only their active assigned branches');
 select throws_ok($$update loyalty.staff_memberships set role = 'owner', all_branches = true
   where user_id = auth.uid()$$, '42501', null, 'Staff cannot promote themselves');
 select throws_ok($$insert into loyalty.staff_branches values (1, auth.uid(), 12)$$,
   '42501', null, 'Staff cannot expand their branch assignment');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000004","pass_token":"fixture-token-a"}';
-select is((select count(id) from public.branches), 0::bigint, 'Marketing has no operational branches');
+select is((select count(id) from public.list_my_branches()), 0::bigint, 'Marketing has no operational branches');
 select throws_ok('select display_name, normalized_phone from loyalty.customers', '42501', null,
   'Marketing cannot read operational customer or contact data');
 select throws_ok($$select customer_id from loyalty.pass_credentials
@@ -124,40 +127,40 @@ select throws_ok($$select customer_id from loyalty.pass_credentials
 select throws_ok('update loyalty.customers set marketing_consent = true', '42501', null,
   'Marketing cannot mutate operational records');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000005"}';
-select is((select count(id) from public.branches), 0::bigint, 'Suspended membership loses all-branch access');
+select is((select count(id) from public.list_my_branches()), 0::bigint, 'Suspended membership loses all-branch access');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000006"}';
-select is((select count(id) from public.branches), 0::bigint, 'Manager without explicit scope gets no branches');
+select is((select count(id) from public.list_my_branches()), 0::bigint, 'Manager without explicit scope gets no branches');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000007"}';
-select is(array(select name from public.branches), array['B Central'], 'Explicit all-branch manager stays in business B');
+select is(array(select name from public.list_my_branches()), array['B Central'], 'Explicit all-branch manager stays in business B');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000008"}';
-select is((select count(id) from public.branches), 0::bigint, 'Unassigned branch staff get no branches');
+select is((select count(id) from public.list_my_branches()), 0::bigint, 'Unassigned branch staff get no branches');
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000009","user_metadata":{"role":"owner"}}';
-select is((select count(id) from public.branches), 0::bigint, 'An Auth identity without membership has no role');
+select is((select count(id) from public.list_my_branches()), 0::bigint, 'An Auth identity without membership has no role');
 set local role anon;
 set local request.jwt.claims = '{"pass_token":"fixture-token-a"}';
-select throws_ok('select name from public.branches', '42501', null, 'Anonymous callers cannot list branches');
+select throws_ok('select name from public.list_my_branches()', '42501', null, 'Anonymous callers cannot list branches');
 select throws_ok($$select customer_id from loyalty.pass_credentials
   where token_hash = sha256(convert_to('fixture-token-a', 'UTF8'))$$, '42501', null,
   'Possession of an issued token gives anonymous callers no access');
-select throws_ok($$insert into public.branches (business_id, name) values (1, 'Untrusted')$$, '42501', null,
+select throws_ok($$insert into loyalty.branches (business_id, name) values (1, 'Untrusted')$$, '42501', null,
   'Anonymous callers cannot create branches');
 
 reset role;
-update public.branches set active = false where business_id = 1 and id = 11;
+update loyalty.branches set active = false where business_id = 1 and id = 11;
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000003"}';
-select is(array(select name from public.branches), array['A West'], 'Deactivation removes an existing branch grant immediately');
+select is(array(select name from public.list_my_branches()), array['A West'], 'Deactivation removes an existing branch grant immediately');
 reset role;
 update loyalty.staff_memberships set active = false where user_id = '00000000-0000-4000-8000-000000000003';
 set local role authenticated;
-select is((select count(id) from public.branches), 0::bigint, 'Staff suspension removes remaining branch access');
+select is((select count(id) from public.list_my_branches()), 0::bigint, 'Staff suspension removes remaining branch access');
 reset role;
 select is((select count(*) from loyalty.staff_branches where user_id = '00000000-0000-4000-8000-000000000003'),
   3::bigint, 'Branch and staff deactivation preserve assignment references');
 update loyalty.businesses set status = 'closed' where id = 2;
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-000000000007"}';
-select is((select count(id) from public.branches), 0::bigint, 'Closed business blocks an otherwise active manager');
+select is((select count(id) from public.list_my_branches()), 0::bigint, 'Closed business blocks an otherwise active manager');
 reset role;
 
 select * from finish();

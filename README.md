@@ -20,7 +20,7 @@ pnpm exec supabase db lint --local
 pnpm exec supabase stop
 ```
 
-The P01 migration creates the tenant and loyalty tables. Authenticated staff can select `business_id`, `id` and `name` from `public.branches` within their active scope. Customer contact, consent history and pass hashes live in the private `loyalty` schema. The pgTAP suite creates synthetic fixtures inside a transaction and rolls them back.
+All nine domain tables live in the private `loyalty` schema. The repository-facing RPC `public.list_my_branches()` returns `business_id`, `id` and `name` for branches in the caller’s active scope. Frontend loyalty workflows use the application HTTP API. The server repository passes the caller’s session to Supabase (DEC-023). The pgTAP suite creates synthetic fixtures inside a transaction and rolls them back.
 
 ## Version evidence
 
