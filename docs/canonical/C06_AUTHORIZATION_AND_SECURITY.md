@@ -7,7 +7,7 @@
 
 - Staff authentication is required for every staff workspace and mutation.
 - There is no customer login in MVP.
-- No public staff self-registration. An owner/manager provisions staff; invitation/password recovery and session details remain OPEN-005.
+- No public staff self-registration. An owner/manager invites staff by email; recipients set their own password and use provider email recovery. Use Supabase sessions and refresh tokens, offer sign-out, and check active membership for each protected operation. The inactivity timeout remains OPEN-005 (DEC-019, DEC-021).
 - The app must not expose Supabase service-role, Auth Admin, signing, or database secrets to the browser.
 - QR lookup may occur only in an authenticated staff app context; a customer cannot mutate by scanning their own pass.
 
@@ -45,7 +45,7 @@ Null branch assignment has role-specific meaning. It is not a blanket permission
 
 ## Privacy and tenant assets
 
-- Enrollment collects minimal data; email is optional under the proposed default. Marketing consent is separate from program participation.
+- Enrollment requires name and mobile number; email is optional. Marketing consent is separate from participation, starts off, can be withdrawn, and its changes and time are recorded (DEC-018, DEC-020). Final wording and privacy notice remain open.
 - Do not expose customer lists to Marketing role unless a later approved decision requires it.
 - Branding storage uses tenant authorization, opaque keys, signed access where applicable, and no PII in paths.
 - Privacy notice, data retention, account closure, and deletion workflow remain OPEN-008 and must be settled before production onboarding.

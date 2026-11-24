@@ -46,3 +46,5 @@ Read `00_ENGINEERING_STANDARDS.md` and only the canonical sections relevant to t
 ## Verification and reporting
 
 Use the task's named verification commands and acceptance cases. Do not claim unrun checks passed. Report changed files, checks and results, migration/fixture impacts, blockers, and the suggested commit. Keep `PROGRESS.md` current at task completion. Git, CI, and deployment ownership must be agreed before those actions.
+
+End every final answer with the exact next step. If the next task should run in a new chat, provide a ready-to-copy prompt; otherwise state the next action in the current chat. If a decision or missing information blocks progress, specify exactly what is needed next.

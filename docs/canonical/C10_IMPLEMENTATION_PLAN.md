@@ -8,7 +8,7 @@
 | ID | Layer | Outcome | Dependencies / rules | Blocking OPEN items |
 |---|---|---|---|---|
 | P00 | Repository/design | Inspect checkout; settle scaffold versions/CI ownership; install canonical docs and create minimal runnable foundation only after reading AGENTS and standards | C00, C03, §25 scaffold proposals | OPEN-010 |
-| P01 | Database | Business, branch, staff membership, roles, program versions, customer, pass credential, core constraints/RLS/fixtures | C02, C04, C06, C09 | OPEN-002, OPEN-005 |
+| P01 | Database | Business, branch, staff membership, roles, program versions, customer, pass credential, core constraints/RLS/fixtures | C02, C04, C06, C09; DEC-018–021 | None for local P01; remaining OPEN-002/005 details apply to later workflows |
 | P02 | Database | Atomic pass enrollment, authorized pass lookup, record-stamp and reward issuance operations with audit/idempotency | C02, C05, C06 | OPEN-002, OPEN-007 |
 | P03 | Server | Auth/bootstrap, DTOs, Controllers/Services/Repositories/Route Handlers and stable error mapping for P01/P02 | C05, C06, engineering standards | P01/P02 |
 | P04 | UI | Owner onboarding, branch/staff/program setup, customer enrollment QR/link, wallet pass add flow, branding preview | C01, C08, C14 | OPEN-001, OPEN-005, OPEN-011 |
@@ -35,4 +35,5 @@ Each task should make the minimum complete, maintainable change needed for its o
 - Mutation gate: atomic event/progress/reward/audit behavior and idempotency are verified.
 - UX gate: primary staff flow works on supported phones with camera and manual fallback.
 - Wallet gate: account ownership/access documentation and pass update behavior verified with each provider.
+- Before the first live stamp or reward, verify that used program terms cannot be rewritten or removed (DEC-022).
 - Pilot gate: owner accepts branding preview, business setup, reports, support and pricing terms.

@@ -1,13 +1,34 @@
-# Loyalty project pack
+# Loyalty System
 
-This folder contains the approved initial product specification for a managed digital loyalty service for small businesses in Guatemala.
+Minimal local foundation for the managed loyalty service. Product rules and the roadmap are in `docs/canonical/`; this scaffold implements no loyalty workflow.
 
-## Contents
+## Local setup
 
-- `AGENTS.md` — concise execution rules for Codex.
-- `PROJECT_INSTRUCTIONS.md` — copyable ChatGPT Project instruction text.
-- `PROGRESS.md` — current checkpoint and next step.
-- `docs/canonical/` — C00–C10 and provisional C14 project documents.
-- `docs/codex/tasks/P00_REPO_RECONNAISSANCE.md` — first planning-only Codex handoff; it creates a repo-specific scaffold task after inspecting the actual checkout.
+Use Node.js 26.3.1 (`.nvmrc`), pnpm 10.34.5 and a running Docker-compatible container runtime. Install dependencies with `pnpm install --frozen-lockfile`. Run `pnpm dev` and open http://localhost:3000. The local API, database, Studio, and mail UI use ports 55321–55324 to avoid conflicts with default Supabase ports. No remote project is linked. Copy `.env.example` to `.env.local` only when local configuration is needed; never commit credentials.
 
-`project_sources/` is not duplicated in this pack. Keep the reusable source files already attached to the ChatGPT project available to Codex, or add them to the repository's source/documentation area according to its current structure.
+Checks: `pnpm lint`, `pnpm typecheck`, `pnpm format:check`, and `pnpm build`. Use `pnpm start` after a build.
+
+## Local database
+
+Run these commands from the repository root with Docker running. The configured project is `LoyaltySystem` and its database is on `127.0.0.1:55322`.
+
+```sh
+pnpm exec supabase start
+pnpm exec supabase migration up --local
+pnpm exec supabase test db
+pnpm exec supabase db lint --local
+pnpm exec supabase stop
+```
+
+The P01 migration creates the tenant and loyalty tables. Authenticated staff can select `business_id`, `id` and `name` from `public.branches` within their active scope. Customer contact, consent history and pass hashes live in the private `loyalty` schema. The pgTAP suite creates synthetic fixtures inside a transaction and rolls them back.
+
+## Version evidence
+
+Verified 2026-11-23 against the [Node release schedule](https://nodejs.org/en/about/previous-releases), [npm registry](https://registry.npmjs.org/), [Next.js installation requirements](https://nextjs.org/docs/app/getting-started/installation), and [Supabase local CLI documentation](https://supabase.com/docs/guides/local-development). Exact package versions and transitive resolutions are pinned in `package.json` and `pnpm-lock.yaml`.
+
+- Node 26.3.1 is on the Node 26 LTS line. pnpm 10.34.5 requires Node >=18.12; Next.js 16.4.6 requires >=20.9.
+- Next.js and eslint-config-next are both 16.4.6; React and React DOM are both 19.3.1. Next accepts React/React DOM ^19 and React DOM requires React ^19.3.1.
+- TypeScript 5.9.3 and ESLint 9.39.1 satisfy eslint-config-next's peers (TypeScript >=3.3.1, ESLint >=9). Its TypeScript ESLint parser 8.74.0 accepts TypeScript >=4.8.4 <6.1 and ESLint 9. TypeScript 7 was therefore not selected.
+- Prettier 3.10.1, Supabase CLI 3.3.0, @types/node 26.6.6, @types/react 19.3.0 and @types/react-dom 19.3.0 are pinned; React DOM types require React types ^19.3.0. The Supabase CLI's install script is explicitly allowed for pnpm.
+
+CI ownership and remote migration approval/runner remain open in C03 OPEN-010. Local verification does not establish CI or release acceptance.

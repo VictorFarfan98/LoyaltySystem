@@ -36,6 +36,7 @@ Enrollment and pass display do not mutate loyalty progress. A stamp is created o
 - Optional expiration: disabled by default. If enabled, only an uncompleted stamp balance expires after a configured inactivity interval measured from the latest qualifying stamp. An earned reward remains available until redeemed unless an explicitly approved later rule changes this.
 - Branches share progress and rewards. Branch label is not shown on MVP passes.
 - A customer QR may be copied or printed. Possession supports lookup only and is never authorization to stamp or redeem.
+- Normalize eight-digit Guatemala phone numbers to `+502` plus the number and accept explicitly international numbers in international format. Matching normalized numbers within a business trigger a warning, not a uniqueness constraint. Managers review possible duplicates; a later audited merge preserves both records' history (DEC-018, DEC-020; OPEN-002).
 
 ## Corrections and audit
 

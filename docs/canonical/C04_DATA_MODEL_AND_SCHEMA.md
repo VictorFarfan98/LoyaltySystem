@@ -12,7 +12,7 @@
 | Staff user | Supabase Auth identity | One identity; may participate in one business per MVP |
 | Business staff membership | `business_id`, `user_id`, role, optional branch scope | Active → suspended; role/scope changes audited |
 | Loyalty program | `business_id`; one active program in MVP | Draft → active → paused/retired; changes should be versioned |
-| Program version | Program, version number, goal/reward/expiration terms | Immutable snapshot once used for a stamp/reward |
+| Program version | Program, version number, goal/reward/expiration terms | Editable during MVP development (DEC-022). Immutable once used for a live stamp or reward. |
 | Customer | `business_id`; unique customer ID | Active → inactive; branch-independent profile |
 | Customer contact | Customer; normalized phone, optional email, consent timestamps | Mutable current contact with relevant history/consent events |
 | Pass credential | Customer and program; opaque random token hash; status | Issued → rotated/revoked; token is lookup-only |
@@ -32,7 +32,8 @@
 - A pass token is generated with sufficient randomness, stored hashed where feasible, and separate from database primary keys. Store status/rotation metadata and never log raw tokens.
 - Idempotency keys are unique within the authenticated actor/business operation scope and do not prevent distinct intentional stamps.
 - Stamp/reward history is append-only. Corrections reference original events and retain the original record.
-- Program versions snapshot goal, reward text, and expiration policy so later edits do not rewrite past eligibility.
+- Before production, enforce and test that a version used for a live stamp or reward retains its goal, reward text, and expiration policy. During MVP development, developers may revise these terms in place or rebuild disposable fixtures as the design changes (DEC-022).
+- Customer contact stores normalized phone without a business-level uniqueness constraint. Marketing consent starts off, is separate and withdrawable; preserve changes and their time (DEC-020).
 - The report's same-day duplicate indicator is derived in Guatemala business time; it must not become a uniqueness constraint.
 
 ## Deactivation semantics
